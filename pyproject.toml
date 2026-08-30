@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "petrovision-multimodal"
+version = "0.1.0"
+description = "Pipeline reprodutível para análise multimodal de imagens petrográficas"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+authors = [
+  { name = "Rodrigo Rangel Goes e Silva" }
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+

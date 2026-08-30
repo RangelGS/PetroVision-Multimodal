@@ -1,0 +1,14 @@
+numpy>=1.26,<3
+pandas>=2.2,<3
+opencv-python>=4.10,<5
+Pillow>=10,<12
+PyYAML>=6,<7
+scikit-learn>=1.5,<2
+matplotlib>=3.9,<4
+seaborn>=0.13,<1
+tqdm>=4.66,<5
+pytest>=8,<9
+
+# Instalaremos PyTorch, Transformers, HDBSCAN, UMAP e SAM 2 na segunda etapa.
+# Isso mantém a primeira configuração mais leve e fácil de diagnosticar.
+

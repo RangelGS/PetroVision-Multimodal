@@ -1,0 +1,31 @@
+project:
+  name: PetroVision Multimodal
+  random_seed: 42
+
+paths:
+  raw_data: data/raw
+  catalog: data/processed/catalog.csv
+  quality_report: results/tables/quality_report.csv
+  quality_summary: results/tables/quality_summary.csv
+
+data:
+  modes:
+    - PPL
+    - XPL
+  splits:
+    - train
+    - val
+    - test
+  extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .tif
+    - .tiff
+
+quality:
+  min_brightness: 35.0
+  max_brightness: 220.0
+  min_contrast: 18.0
+  min_sharpness: 60.0
+
