@@ -8,6 +8,10 @@ paths:
   quality_report: results/tables/quality_report.csv
   quality_summary: results/tables/quality_summary.csv
   manual_quality_review: metadata/quality_manual_review.csv
+  dinov2_embeddings: data/processed/dinov2_small_embeddings.npz
+  dinov2_index: results/tables/dinov2_embedding_index.csv
+  dinov2_run: results/tables/dinov2_embedding_run.json
+  dinov2_analysis_dir: results/dinov2
 
 data:
   modes:
@@ -61,3 +65,20 @@ remote_dataset:
     val: 7
     test: 5
   manifest: metadata/subset_manifest.csv
+
+models:
+  dinov2:
+    model_id: facebook/dinov2-small
+    revision: ed25f3a31f01632728cabb09d1542f84ab7b0056
+    batch_size: 16
+    embedding_source: cls_token
+    l2_normalize: true
+
+analysis:
+  linear_probe_c_values:
+    - 0.01
+    - 0.1
+    - 1.0
+    - 10.0
+    - 100.0
+  kmeans_clusters: 4

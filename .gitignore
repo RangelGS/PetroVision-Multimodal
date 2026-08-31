@@ -16,11 +16,14 @@ models/*
 !models/.gitkeep
 results/figures/*
 results/tables/*
+results/dinov2/*
 !results/figures/.gitkeep
 !results/tables/.gitkeep
+!results/dinov2/.gitkeep
 
 *.pt
 *.pth
 *.ckpt
 *.npz
 *.part
+.huggingface/

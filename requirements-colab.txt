@@ -1,0 +1,4 @@
+torch>=2.2,<3
+torchvision>=0.17,<1
+transformers>=4.44,<6
+safetensors>=0.4,<1

@@ -9,6 +9,8 @@ seaborn>=0.13,<1
 tqdm>=4.66,<5
 pytest>=8,<9
 remotezip==0.12.6
+tabulate>=0.9,<1
 
-# PyTorch, Transformers, HDBSCAN, UMAP e SAM 2 entrarão na etapa de modelos.
+# PyTorch e Transformers ficam em requirements-colab.txt para não tornar pesada
+# a instalação local usada apenas para catálogo, qualidade e testes.
 # O download seletivo usa RemoteZip para não baixar o arquivo completo (30,92 GB).

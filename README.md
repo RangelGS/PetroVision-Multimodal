@@ -1,15 +1,18 @@
 # PetroVision Multimodal
 
+[![Abrir no Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RangelGS/PetroVision-Multimodal/blob/main/notebooks/PetroVision_DINOv2_Colab.ipynb)
+
 Prova de conceito para curadoria, análise e classificação de imagens
 petrográficas multimodais. O projeto foi planejado para demonstrar competências
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.4.1: catálogo, controle de qualidade e preparação dos dados
-> reais estão implementados. O projeto seleciona 336 imagens PPL/XPL do
-> DeepCarbonate, equilibradas por modalidade, classe e divisão, com proveniência
-> e hashes. As 336 foram aceitas após triagem automática e revisão visual
-> documentada. DINOv2, alinhamento multimodal e SAM 2 entram na próxima etapa.
+> Estado atual — v0.5.0: catálogo, controle de qualidade, preparação dos dados e
+> pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
+> do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
+> proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
+> visual documentada. A etapa de modelos extrai representações congeladas,
+> avalia probes lineares, agrupamentos e alinhamento entre protótipos PPL/XPL.
 
 ## Pergunta de pesquisa
 
@@ -122,6 +125,35 @@ Rodar os testes do núcleo inicial:
 python -m pytest
 ```
 
+## DINOv2 no Google Colab
+
+A execução pesada foi organizada no notebook
+[`notebooks/PetroVision_DINOv2_Colab.ipynb`](notebooks/PetroVision_DINOv2_Colab.ipynb).
+Abra-o no Google Colab, selecione uma GPU e execute as células em ordem. O
+notebook clona o repositório, reconstrói o subconjunto, extrai 336 vetores com o
+checkpoint congelado `facebook/dinov2-small` e gera um pacote de resultados.
+
+O pipeline usa o token global `CLS` (384 dimensões), normalização L2 e uma
+revisão fixa do checkpoint. Não há fine-tuning do DINOv2. O classificador linear
+seleciona seu hiperparâmetro apenas na validação e usa o teste somente na
+avaliação final. São executados seis cenários:
+
+- treino PPL com teste PPL e XPL;
+- treino XPL com teste XPL e PPL;
+- treino combinado PPL+XPL com teste separado em cada modalidade.
+
+Os resultados também incluem PCA, K-Means avaliado contra classe e modalidade,
+matriz de similaridade entre protótipos e matrizes de confusão. PPL e XPL
+continuam tratados como domínios não pareados. Consulte
+[`docs/DINOV2_COLAB.md`](docs/DINOV2_COLAB.md).
+
+Execução manual no Colab, após preparar os dados:
+
+```bash
+python scripts/extract_dinov2_embeddings.py --device cuda
+python scripts/analyze_dinov2_embeddings.py
+```
+
 ## Hardware
 
 O catálogo e o controle de qualidade rodam localmente. Como a GPU AMD RX 7600
@@ -154,7 +186,7 @@ brutas ficam fora do Git; este repositório versiona o código, o plano de
 seleção, o manifesto de proveniência e os resultados. Consulte
 `metadata/DATASET.md`.
 
-Resultados de segmentação do SAM 2 serão descritos como regiões candidatas, não
+Resultados futuros de segmentação do SAM 2 serão descritos como regiões candidatas, não
 como identificação mineral validada. Interpretação geológica exige validação de
 especialistas.
 
