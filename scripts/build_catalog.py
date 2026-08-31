@@ -1,4 +1,4 @@
-"""Cria o catálogo de imagens e o relatório de pares PPL/XPL."""
+"""Cria o catálogo e diagnostica coincidências de identificador PPL/XPL."""
 
 from __future__ import annotations
 
@@ -25,17 +25,20 @@ def main() -> int:
         return 1
 
     catalog.to_csv(output_path, index=False)
-    pair_path = output_path.with_name("modality_pairs.csv")
-    pairs = modality_pair_table(catalog)
-    pairs.to_csv(pair_path, index=False)
+    comparison = modality_pair_table(catalog)
+    overlap_path = output_path.with_name("modality_name_overlaps.csv")
+    overlaps = comparison[comparison["has_pair"]].copy()
+    overlaps.to_csv(overlap_path, index=False)
 
     print(f"Catálogo: {output_path}")
     print(f"Imagens: {len(catalog)}")
     print(f"Classes: {catalog['class_name'].nunique()}")
-    print(f"Pares PPL/XPL: {int(pairs['has_pair'].sum())} de {len(pairs)} amostras")
+    print(
+        "Coincidências de identificador PPL/XPL: "
+        f"{len(overlaps)} (não interpretadas como pares petrográficos)"
+    )
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

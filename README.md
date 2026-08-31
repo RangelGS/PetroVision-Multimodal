@@ -5,17 +5,17 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual: estrutura inicial funcional. As etapas de catálogo e controle
-> de qualidade já estão implementadas. A extração com DINOv2, a fusão PPL/XPL
-> e a segmentação com SAM 2 serão executadas depois que o subconjunto de dados
-> reais estiver preparado.
+> Estado atual — v0.4.1: catálogo, controle de qualidade e preparação dos dados
+> reais estão implementados. O projeto seleciona 336 imagens PPL/XPL do
+> DeepCarbonate, equilibradas por modalidade, classe e divisão, com proveniência
+> e hashes. As 336 foram aceitas após triagem automática e revisão visual
+> documentada. DINOv2, alinhamento multimodal e SAM 2 entram na próxima etapa.
 
 ## Pergunta de pesquisa
 
 Representações extraídas por um modelo visual auto-supervisionado conseguem
-separar categorias petrográficas? A combinação de imagens em luz plano-
-polarizada (PPL) e luz polarizada cruzada (XPL) melhora o desempenho em relação
-ao uso de apenas uma modalidade?
+separar categorias petrográficas? Elas permanecem consistentes quando o domínio
+óptico muda entre luz plano-polarizada (PPL) e luz polarizada cruzada (XPL)?
 
 ## Etapas
 
@@ -23,8 +23,8 @@ ao uso de apenas uma modalidade?
 2. Verificar brilho, contraste e nitidez com OpenCV.
 3. Extrair embeddings com DINOv2 usando PyTorch.
 4. Agrupar embeddings sem rótulos com HDBSCAN.
-5. Treinar um classificador linear sobre os embeddings.
-6. Comparar PPL, XPL e fusão PPL + XPL.
+5. Treinar classificadores lineares sobre embeddings congelados.
+6. Comparar PPL e XPL e medir o alinhamento entre protótipos de classe.
 7. Produzir máscaras exploratórias com SAM 2 e indicadores quantitativos.
 8. Documentar métricas, limitações e reprodutibilidade.
 
@@ -42,17 +42,17 @@ data/raw/
     └── test/<classe>/*.jpg
 ```
 
-Imagens PPL e XPL correspondentes devem ter o mesmo nome de arquivo dentro da
-mesma classe e divisão. O script de catálogo registra pares encontrados e
-também preserva imagens sem par.
+O ZIP não fornece uma chave confiável para ligar cada imagem PPL à sua suposta
+correspondente XPL. Por isso, as modalidades são tratadas como subconjuntos não
+pareados. A seleção é independente, equilibrada e preserva as divisões oficiais.
 
 ## Instalação no Windows 11
 
-Use Python 3.11. Abra a pasta no VSCode e execute, no terminal PowerShell, um
-comando por vez:
+Use Python 3.11 ou 3.12. Abra a pasta no VSCode e execute, no terminal
+PowerShell, um comando por vez. O exemplo abaixo usa a versão 3.12:
 
 ```powershell
-py -3.11 -m venv .venv
+py -V:3.12 -m venv .venv
 ```
 
 ```powershell
@@ -64,11 +64,11 @@ python -m pip install --upgrade pip
 ```
 
 ```powershell
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ```powershell
-pip install -e .
+python -m pip install -e .
 ```
 
 Se o PowerShell bloquear a ativação, consulte `docs/SETUP_WINDOWS.md`.
@@ -81,11 +81,28 @@ Verificar o ambiente:
 python scripts/check_environment.py
 ```
 
-Depois de colocar as imagens em `data/raw`, criar o catálogo:
+Antes do download, simular a seleção no arquivo remoto:
+
+```powershell
+python scripts/download_subset.py --dry-run
+```
+
+Se a simulação confirmar 336 imagens, baixar o recorte:
+
+```powershell
+python scripts/download_subset.py --yes
+```
+
+O download gera `metadata/subset_manifest.csv` com a origem, o tamanho e o
+SHA-256 de cada imagem. Depois, criar o catálogo:
 
 ```powershell
 python scripts/build_catalog.py
 ```
+
+O manifesto também é auditado contra conteúdos repetidos. Duas entradas
+idênticas com rótulos conflitantes foram documentadas, colocadas em quarentena
+e substituídas. Consulte `metadata/DATASET_ISSUES.md`.
 
 Executar o controle de qualidade:
 
@@ -93,10 +110,16 @@ Executar o controle de qualidade:
 python scripts/run_quality_control.py
 ```
 
+Os limites automáticos funcionam como triagem, não como exclusão. Casos
+sinalizados devem receber decisão visual em
+`metadata/quality_manual_review.csv`. Nesta amostra, 330 imagens passaram
+automaticamente e 6 imagens escuras foram mantidas após revisão por preservarem
+contraste, textura, bordas e escala. Consulte `metadata/QUALITY_REVIEW.md`.
+
 Rodar os testes do núcleo inicial:
 
 ```powershell
-pytest
+python -m pytest
 ```
 
 ## Hardware
@@ -108,10 +131,28 @@ organização, Git, documentação e desenvolvimento.
 
 ## Dados e integridade científica
 
-O conjunto de referência planejado é o DeepCarbonate, publicado com 55.786
-imagens, 22 categorias litológicas e diferentes modos ópticos. Para esta prova
-de conceito será usado um subconjunto estratificado, preservando as divisões
-oficiais e registrando a origem de cada arquivo.
+O conjunto de referência é o DeepCarbonate, publicado com 55.786 imagens, 22
+categorias litológicas e diferentes modos ópticos. A prova de conceito usa um
+subconjunto estratificado das classes `class10` (Cemented fracture), `class13`
+(Micritic limestone), `class17` (Oolite) e `class22` (Pore). Para cada classe e
+modalidade são selecionadas 30 imagens de treino, 7 de validação e 5 de teste.
+Isso totaliza 336 imagens: 168 PPL e 168 XPL. A validação é limitada pelas 7
+imagens XPL de Oolite disponíveis; aplicar o mesmo limite a todos os grupos
+mantém o recorte equilibrado. Arquivos `_ARS` são excluídos.
+
+O artigo informa que PPL e XPL foram capturadas simultaneamente, mas o ZIP não
+publica uma chave de pareamento individual. O projeto não associa imagens por
+ordem nem presume que nomes coincidentes sejam pares reais. A análise
+multimodal será feita em nível de domínio e de protótipos de classe.
+
+O arquivo de origem possui 30,92 GB, mas o script usa requisições parciais para
+transferir somente as imagens selecionadas. O rótulo vem do diretório oficial
+`classN` e do `classmap.txt`, não do nome histórico da imagem.
+
+Os dados são disponibilizados pelos autores sob CC BY-NC-ND 4.0. As imagens
+brutas ficam fora do Git; este repositório versiona o código, o plano de
+seleção, o manifesto de proveniência e os resultados. Consulte
+`metadata/DATASET.md`.
 
 Resultados de segmentação do SAM 2 serão descritos como regiões candidatas, não
 como identificação mineral validada. Interpretação geológica exige validação de
@@ -121,4 +162,3 @@ especialistas.
 
 Projeto desenvolvido por Rodrigo Rangel Goes e Silva. Bibliotecas, modelos e
 dados externos devem permanecer citados no relatório e no repositório.
-

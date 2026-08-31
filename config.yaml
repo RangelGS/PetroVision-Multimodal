@@ -7,6 +7,7 @@ paths:
   catalog: data/processed/catalog.csv
   quality_report: results/tables/quality_report.csv
   quality_summary: results/tables/quality_summary.csv
+  manual_quality_review: metadata/quality_manual_review.csv
 
 data:
   modes:
@@ -29,3 +30,34 @@ quality:
   min_contrast: 18.0
   min_sharpness: 60.0
 
+remote_dataset:
+  name: DeepCarbonate
+  doi: 10.5281/zenodo.18061204
+  archive_url: https://zenodo.org/api/records/18061204/files/carbonate_1223.zip/content
+  archive_prefix: carbonate_1223
+  initial_buffer_mb: 8
+  timeout_seconds: 120
+  exclude_name_contains:
+    - _ARS
+  exclude_archive_members:
+    - carbonate_1223/PPL-1223/train/class10/Fracture.999.jpg
+    - carbonate_1223/XPL-1223/train/class13/Micritic_limestone.1837.jpg
+  quarantine_root: data/interim/quarantine/dataset_duplicates
+  selected_classes:
+    class10:
+      label: Cemented fracture
+      edital_concept: cimento/fratura
+    class13:
+      label: Micritic limestone
+      edital_concept: matriz
+    class17:
+      label: Oolite
+      edital_concept: grão
+    class22:
+      label: Pore
+      edital_concept: poro
+  images_per_split_per_mode:
+    train: 30
+    val: 7
+    test: 5
+  manifest: metadata/subset_manifest.csv

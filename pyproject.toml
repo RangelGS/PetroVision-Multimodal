@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "petrovision-multimodal"
-version = "0.1.0"
+version = "0.4.1"
 description = "Pipeline reprodutível para análise multimodal de imagens petrográficas"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -19,4 +19,3 @@ where = ["src"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
-

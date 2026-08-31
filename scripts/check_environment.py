@@ -13,6 +13,7 @@ PACKAGES = {
     "cv2": "OpenCV",
     "yaml": "PyYAML",
     "sklearn": "Scikit-learn",
+    "remotezip": "RemoteZip",
 }
 
 
@@ -35,10 +36,9 @@ def main() -> int:
         print("\nExecute: pip install -r requirements.txt")
         return 1
 
-    print("\nAmbiente pronto para catálogo e controle de qualidade.")
+    print("\nAmbiente pronto para download seletivo, catálogo e controle de qualidade.")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

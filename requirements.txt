@@ -8,7 +8,7 @@ matplotlib>=3.9,<4
 seaborn>=0.13,<1
 tqdm>=4.66,<5
 pytest>=8,<9
+remotezip==0.12.6
 
-# Instalaremos PyTorch, Transformers, HDBSCAN, UMAP e SAM 2 na segunda etapa.
-# Isso mantém a primeira configuração mais leve e fácil de diagnosticar.
-
+# PyTorch, Transformers, HDBSCAN, UMAP e SAM 2 entrarão na etapa de modelos.
+# O download seletivo usa RemoteZip para não baixar o arquivo completo (30,92 GB).

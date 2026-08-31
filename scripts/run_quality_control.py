@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from petrovision.config import load_config, project_path
-from petrovision.quality import evaluate_catalog, summarise_quality
+from petrovision.quality import apply_manual_reviews, evaluate_catalog, summarise_quality
 
 
 def main() -> int:
@@ -16,7 +16,13 @@ def main() -> int:
         return 1
 
     catalog = pd.read_csv(catalog_path)
-    report = evaluate_catalog(catalog, config["quality"])
+    automatic_report = evaluate_catalog(catalog, config["quality"])
+    manual_review_path = project_path(config["paths"]["manual_quality_review"])
+    if not manual_review_path.exists():
+        print(f"Revisão manual não encontrada: {manual_review_path}")
+        return 1
+    manual_reviews = pd.read_csv(manual_review_path)
+    report = apply_manual_reviews(automatic_report, manual_reviews)
     summary = summarise_quality(report)
 
     report_path = project_path(config["paths"]["quality_report"])
@@ -29,9 +35,9 @@ def main() -> int:
     print(f"Relatório detalhado: {report_path}")
     print(f"Resumo: {summary_path}")
     print(summary.to_string(index=False))
+    print("\nObservação: alertas automáticos indicam revisão, não exclusão.")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

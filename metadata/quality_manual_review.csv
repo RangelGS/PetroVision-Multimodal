@@ -1,0 +1,7 @@
+mode,split,class_name,sample_id,manual_decision,review_notes
+PPL,train,class10_cemented_fracture,Fracture.642,keep,"Dark field with preserved texture, contrast, edges, and scale; visual quality review only."
+XPL,train,class10_cemented_fracture,Fracture.753,keep,"Dark XPL field with visible fracture and preserved detail; visual quality review only."
+PPL,train,class13_micritic_limestone,Micritic_limestone.2884,keep,"Dark field with preserved grains, boundaries, and scale; visual quality review only."
+XPL,train,class22_pore,Vug.2949,keep,"Dark pore image with preserved internal texture and contrast; visual quality review only."
+XPL,val,class22_pore,Vug.1731,keep,"Dark pore image with visible mineral boundaries and scale; visual quality review only."
+XPL,val,class22_pore,Vug.1753,keep,"Dark pore image with visible grains and preserved contrast; visual quality review only."

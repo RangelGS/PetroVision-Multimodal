@@ -1,0 +1,5 @@
+class_id,class_label,edital_concept,train_images_per_mode,val_images_per_mode,test_images_per_mode,total_images_both_modes
+class10,Cemented fracture,cimento/fratura,30,7,5,84
+class13,Micritic limestone,matriz,30,7,5,84
+class17,Oolite,grão,30,7,5,84
+class22,Pore,poro,30,7,5,84
