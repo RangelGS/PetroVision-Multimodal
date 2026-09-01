@@ -16,6 +16,7 @@ from petrovision.embedding_analysis import (
     clustering_diagnostics,
     linear_probe_suite,
     prototype_similarity,
+    repeated_probe_stability,
 )
 from petrovision.embeddings import load_embedding_bundle
 
@@ -86,6 +87,52 @@ def save_confusion_plot(predictions: pd.DataFrame, output: Path) -> None:
     plt.close(figure)
 
 
+def save_stability_plot(folds: pd.DataFrame, output: Path) -> None:
+    """Mostra a distribuição do macro-F1 nas repetições de desenvolvimento."""
+
+    plot_data = folds.copy()
+    plot_data["scenario"] = (
+        plot_data["training_domain"] + " → " + plot_data["evaluation_mode"]
+    )
+    scenario_order = (
+        plot_data[["training_domain", "evaluation_mode", "scenario"]]
+        .drop_duplicates()
+        .sort_values(["training_domain", "evaluation_mode"])["scenario"]
+        .tolist()
+    )
+    sns.set_theme(style="whitegrid", context="talk")
+    figure, axis = plt.subplots(figsize=(14, 8))
+    sns.boxplot(
+        data=plot_data,
+        x="scenario",
+        y="macro_f1",
+        order=scenario_order,
+        color="#77aadd",
+        showfliers=False,
+        ax=axis,
+    )
+    sns.stripplot(
+        data=plot_data,
+        x="scenario",
+        y="macro_f1",
+        order=scenario_order,
+        color="#17365d",
+        alpha=0.45,
+        jitter=0.18,
+        size=5,
+        ax=axis,
+    )
+    axis.axhline(0.25, color="#a33a3a", linestyle="--", linewidth=1.5)
+    axis.set_ylim(0.0, 1.02)
+    axis.set_title("Estabilidade do probe linear — validação repetida")
+    axis.set_xlabel("Treino → avaliação no conjunto de desenvolvimento")
+    axis.set_ylabel("Macro-F1")
+    axis.tick_params(axis="x", rotation=30)
+    figure.tight_layout()
+    figure.savefig(output, dpi=180, bbox_inches="tight")
+    plt.close(figure)
+
+
 def main() -> int:
     config = load_config()
     embeddings_path = project_path(config["paths"]["dinov2_embeddings"])
@@ -113,6 +160,16 @@ def main() -> int:
         c_values=config["analysis"]["linear_probe_c_values"],
         random_seed=int(config["project"]["random_seed"]),
     )
+    repeated_config = config["analysis"]["repeated_validation"]
+    stability_folds, stability_summary = repeated_probe_stability(
+        embeddings,
+        index,
+        c_values=config["analysis"]["linear_probe_c_values"],
+        outer_splits=int(repeated_config["outer_splits"]),
+        outer_repeats=int(repeated_config["outer_repeats"]),
+        inner_splits=int(repeated_config["inner_splits"]),
+        random_seed=int(config["project"]["random_seed"]),
+    )
     similarity, prototype_summary = prototype_similarity(embeddings, index)
     cluster_metrics, clusters = clustering_diagnostics(
         embeddings,
@@ -132,6 +189,12 @@ def main() -> int:
 
     metrics.to_csv(table_dir / "linear_probe_metrics.csv", index=False)
     predictions.to_csv(table_dir / "linear_probe_predictions.csv", index=False)
+    stability_folds.to_csv(
+        table_dir / "repeated_probe_fold_metrics.csv", index=False
+    )
+    stability_summary.to_csv(
+        table_dir / "repeated_probe_summary.csv", index=False
+    )
     similarity.to_csv(table_dir / "prototype_similarity.csv", index=False)
     cluster_metrics.to_csv(table_dir / "clustering_metrics.csv", index=False)
     coordinates.to_csv(table_dir / "pca_coordinates.csv", index=False)
@@ -153,12 +216,21 @@ def main() -> int:
     save_pca_plot(coordinates, figure_dir / "pca_class_mode.png")
     save_prototype_plot(similarity, figure_dir / "prototype_similarity.png")
     save_confusion_plot(predictions, figure_dir / "linear_probe_confusions.png")
+    save_stability_plot(
+        stability_folds, figure_dir / "repeated_probe_stability.png"
+    )
 
     report = output_dir / "DINOV2_REPORT.md"
     report.write_text(
         "# Relatório automático — DINOv2\n\n"
         "## Classificadores lineares\n\n"
         f"{metrics.to_markdown(index=False, floatfmt='.3f')}\n\n"
+        "## Estabilidade no conjunto de desenvolvimento\n\n"
+        f"{stability_summary.to_markdown(index=False, floatfmt='.3f')}\n\n"
+        f"> Validação aninhada com {int(repeated_config['outer_splits'])} dobras "
+        f"e {int(repeated_config['outer_repeats'])} repetições. As linhas do teste "
+        "oficial foram excluídas. O desvio-padrão é descritivo porque as dobras "
+        "repetidas se sobrepõem.\n\n"
         "## Diagnóstico de agrupamento\n\n"
         f"{cluster_metrics.to_markdown(index=False, floatfmt='.3f')}\n\n"
         "## Alinhamento de protótipos\n\n"
@@ -172,6 +244,8 @@ def main() -> int:
     print(f"Relatório: {report}")
     print("\nClassificadores lineares:")
     print(metrics.to_string(index=False))
+    print("\nEstabilidade no desenvolvimento:")
+    print(stability_summary.to_string(index=False))
     print("\nAgrupamento:")
     print(cluster_metrics.to_string(index=False))
     return 0

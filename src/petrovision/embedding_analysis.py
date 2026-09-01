@@ -16,6 +16,7 @@ from sklearn.metrics import (
     normalized_mutual_info_score,
     silhouette_score,
 )
+from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold
 
 
 def _require_columns(index: pd.DataFrame, columns: Iterable[str]) -> None:
@@ -30,6 +31,54 @@ def _require_all_classes(labels: np.ndarray, expected: list[str], context: str) 
         raise ValueError(
             f"Classes incompletas em {context}: encontradas {present}; esperadas {expected}"
         )
+
+
+def _normalize_c_grid(c_values: Iterable[float]) -> list[float]:
+    grid = [float(value) for value in c_values]
+    if not grid or any(value <= 0 for value in grid):
+        raise ValueError("Os valores de C devem ser positivos.")
+    return grid
+
+
+def _select_c_with_inner_cv(
+    matrix: np.ndarray,
+    labels: np.ndarray,
+    c_grid: list[float],
+    inner_splits: int,
+    random_seed: int,
+) -> tuple[float, float]:
+    """Seleciona C por macro-F1 sem observar a dobra externa."""
+
+    splitter = StratifiedKFold(
+        n_splits=inner_splits,
+        shuffle=True,
+        random_state=random_seed,
+    )
+    candidate_scores: list[tuple[float, float]] = []
+    for c_value in c_grid:
+        fold_scores: list[float] = []
+        for train_rows, validation_rows in splitter.split(matrix, labels):
+            candidate = LogisticRegression(
+                C=c_value,
+                max_iter=5000,
+                solver="lbfgs",
+                random_state=random_seed,
+            )
+            candidate.fit(matrix[train_rows], labels[train_rows])
+            predicted = candidate.predict(matrix[validation_rows])
+            fold_scores.append(
+                f1_score(
+                    labels[validation_rows],
+                    predicted,
+                    average="macro",
+                    zero_division=0,
+                )
+            )
+        candidate_scores.append((float(np.mean(fold_scores)), c_value))
+
+    best_score = max(score for score, _ in candidate_scores)
+    best_c = min(c for score, c in candidate_scores if score == best_score)
+    return best_c, best_score
 
 
 def linear_probe_suite(
@@ -50,9 +99,7 @@ def linear_probe_suite(
     if len(modes) != 2:
         raise ValueError(f"A análise espera duas modalidades; encontradas: {modes}")
 
-    c_grid = [float(value) for value in c_values]
-    if not c_grid or any(value <= 0 for value in c_grid):
-        raise ValueError("Os valores de C devem ser positivos.")
+    c_grid = _normalize_c_grid(c_values)
 
     experiments: list[tuple[str, list[str]]] = [
         (modes[0], [modes[0]]),
@@ -141,6 +188,186 @@ def linear_probe_suite(
         ["training_domain", "mode", "sample_id"]
     ).reset_index(drop=True)
     return metrics, predictions
+
+
+def repeated_probe_stability(
+    embeddings: np.ndarray,
+    index: pd.DataFrame,
+    c_values: Iterable[float],
+    outer_splits: int = 5,
+    outer_repeats: int = 5,
+    inner_splits: int = 3,
+    random_seed: int = 42,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Mede estabilidade com validação repetida aninhada em treino+validação.
+
+    As linhas do teste oficial são deliberadamente ignoradas. Em cada dobra
+    externa, o valor de C é escolhido apenas por validação cruzada interna nas
+    linhas de ajuste daquela dobra.
+    """
+
+    _require_columns(index, ["sample_id", "mode", "split", "class_name"])
+    matrix = np.asarray(embeddings, dtype=np.float32)
+    if len(matrix) != len(index):
+        raise ValueError("Embeddings e índice precisam ter o mesmo número de linhas.")
+    if outer_splits < 2:
+        raise ValueError("outer_splits deve ser pelo menos 2.")
+    if outer_repeats < 1:
+        raise ValueError("outer_repeats deve ser pelo menos 1.")
+    if inner_splits < 2:
+        raise ValueError("inner_splits deve ser pelo menos 2.")
+
+    modes = sorted(index["mode"].astype(str).unique())
+    if len(modes) != 2:
+        raise ValueError(f"A análise espera duas modalidades; encontradas: {modes}")
+    development_mask = index["split"].isin(["train", "val"])
+    development_classes = sorted(
+        index.loc[development_mask, "class_name"].astype(str).unique()
+    )
+    c_grid = _normalize_c_grid(c_values)
+
+    mode_splits: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
+    for mode_number, mode in enumerate(modes):
+        positions = np.flatnonzero(
+            (development_mask & index["mode"].eq(mode)).to_numpy()
+        )
+        labels = index.iloc[positions]["class_name"].astype(str).to_numpy()
+        _require_all_classes(labels, development_classes, f"desenvolvimento {mode}")
+        class_counts = pd.Series(labels).value_counts()
+        if int(class_counts.min()) < outer_splits:
+            raise ValueError(
+                f"Cada classe de {mode} precisa de ao menos {outer_splits} amostras "
+                "para as divisões externas."
+            )
+        largest_outer_fold = int(np.ceil(class_counts.max() / outer_splits))
+        smallest_outer_train = int(class_counts.min()) - largest_outer_fold
+        if smallest_outer_train < inner_splits:
+            raise ValueError(
+                f"As dobras externas de {mode} deixam menos de {inner_splits} "
+                "amostras por classe para a validação interna."
+            )
+
+        splitter = RepeatedStratifiedKFold(
+            n_splits=outer_splits,
+            n_repeats=outer_repeats,
+            random_state=random_seed + (mode_number * 10_000),
+        )
+        mode_splits[mode] = [
+            (positions[fit_rows], positions[evaluation_rows])
+            for fit_rows, evaluation_rows in splitter.split(matrix[positions], labels)
+        ]
+
+    experiments: list[tuple[str, list[str]]] = [
+        (modes[0], [modes[0]]),
+        (modes[1], [modes[1]]),
+        ("+".join(modes), modes),
+    ]
+    metric_rows: list[dict[str, object]] = []
+    total_outer_runs = outer_splits * outer_repeats
+    for run_number in range(total_outer_runs):
+        repeat_number = (run_number // outer_splits) + 1
+        fold_number = (run_number % outer_splits) + 1
+        for experiment_number, (training_domain, train_modes) in enumerate(experiments):
+            fit_positions = np.concatenate(
+                [mode_splits[mode][run_number][0] for mode in train_modes]
+            )
+            fit_labels = (
+                index.iloc[fit_positions]["class_name"].astype(str).to_numpy()
+            )
+            _require_all_classes(
+                fit_labels,
+                development_classes,
+                f"ajuste repetido {training_domain}",
+            )
+            selection_seed = (
+                random_seed + (run_number * 101) + (experiment_number * 10_000)
+            )
+            selected_c, inner_score = _select_c_with_inner_cv(
+                matrix[fit_positions],
+                fit_labels,
+                c_grid,
+                inner_splits=inner_splits,
+                random_seed=selection_seed,
+            )
+            final_model = LogisticRegression(
+                C=selected_c,
+                max_iter=5000,
+                solver="lbfgs",
+                random_state=selection_seed,
+            )
+            final_model.fit(matrix[fit_positions], fit_labels)
+
+            for evaluation_mode in modes:
+                evaluation_positions = mode_splits[evaluation_mode][run_number][1]
+                evaluation_labels = (
+                    index.iloc[evaluation_positions]["class_name"]
+                    .astype(str)
+                    .to_numpy()
+                )
+                _require_all_classes(
+                    evaluation_labels,
+                    development_classes,
+                    f"avaliação repetida {evaluation_mode}",
+                )
+                predicted = final_model.predict(matrix[evaluation_positions])
+                relation = (
+                    "combined"
+                    if len(train_modes) == len(modes)
+                    else (
+                        "within_domain"
+                        if evaluation_mode in train_modes
+                        else "cross_domain"
+                    )
+                )
+                metric_rows.append(
+                    {
+                        "outer_repeat": repeat_number,
+                        "outer_fold": fold_number,
+                        "training_domain": training_domain,
+                        "evaluation_mode": evaluation_mode,
+                        "relation": relation,
+                        "selected_c": selected_c,
+                        "inner_validation_macro_f1": inner_score,
+                        "accuracy": accuracy_score(evaluation_labels, predicted),
+                        "balanced_accuracy": balanced_accuracy_score(
+                            evaluation_labels, predicted
+                        ),
+                        "macro_f1": f1_score(
+                            evaluation_labels,
+                            predicted,
+                            average="macro",
+                            zero_division=0,
+                        ),
+                        "fit_samples": len(fit_positions),
+                        "evaluation_samples": len(evaluation_positions),
+                    }
+                )
+
+    folds = pd.DataFrame(metric_rows).sort_values(
+        ["training_domain", "evaluation_mode", "outer_repeat", "outer_fold"]
+    ).reset_index(drop=True)
+    group_columns = ["training_domain", "evaluation_mode", "relation"]
+    summary = (
+        folds.groupby(group_columns, sort=True)
+        .agg(
+            stability_runs=("macro_f1", "size"),
+            selected_c_median=("selected_c", "median"),
+            inner_validation_macro_f1_mean=(
+                "inner_validation_macro_f1",
+                "mean",
+            ),
+            accuracy_mean=("accuracy", "mean"),
+            accuracy_std=("accuracy", "std"),
+            balanced_accuracy_mean=("balanced_accuracy", "mean"),
+            balanced_accuracy_std=("balanced_accuracy", "std"),
+            macro_f1_mean=("macro_f1", "mean"),
+            macro_f1_std=("macro_f1", "std"),
+            macro_f1_min=("macro_f1", "min"),
+            macro_f1_max=("macro_f1", "max"),
+        )
+        .reset_index()
+    )
+    return folds, summary
 
 
 def prototype_similarity(

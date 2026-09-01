@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from petrovision.embedding_analysis import (
     clustering_diagnostics,
     linear_probe_suite,
     prototype_similarity,
+    repeated_probe_stability,
 )
 
 
@@ -65,3 +67,63 @@ def test_prototypes_and_clusters_reflect_synthetic_classes() -> None:
     assert summary["prototype_alignment_gap"] > 0.9
     assert cluster_metrics.loc[0, "adjusted_rand_class"] == 1.0
     assert len(clusters) == len(index)
+
+
+def test_repeated_probe_stability_is_perfect_and_summarized() -> None:
+    embeddings, index = synthetic_multimodal_embeddings()
+
+    folds, summary = repeated_probe_stability(
+        embeddings,
+        index,
+        c_values=[0.1, 1.0, 10.0],
+        outer_splits=2,
+        outer_repeats=2,
+        inner_splits=2,
+    )
+
+    assert len(folds) == 24
+    assert len(summary) == 6
+    assert (folds[["accuracy", "balanced_accuracy", "macro_f1"]] == 1.0).all().all()
+    assert (summary["stability_runs"] == 4).all()
+    assert (summary["macro_f1_mean"] == 1.0).all()
+    assert (summary["macro_f1_std"] == 0.0).all()
+
+
+def test_repeated_probe_stability_never_reads_official_test() -> None:
+    embeddings, index = synthetic_multimodal_embeddings()
+    altered = embeddings.copy()
+    altered[index["split"].eq("test").to_numpy()] = np.nan
+
+    expected_folds, expected_summary = repeated_probe_stability(
+        embeddings,
+        index,
+        c_values=[0.1, 1.0],
+        outer_splits=2,
+        outer_repeats=1,
+        inner_splits=2,
+    )
+    actual_folds, actual_summary = repeated_probe_stability(
+        altered,
+        index,
+        c_values=[0.1, 1.0],
+        outer_splits=2,
+        outer_repeats=1,
+        inner_splits=2,
+    )
+
+    pd.testing.assert_frame_equal(actual_folds, expected_folds)
+    pd.testing.assert_frame_equal(actual_summary, expected_summary)
+
+
+def test_repeated_probe_stability_rejects_too_many_outer_splits() -> None:
+    embeddings, index = synthetic_multimodal_embeddings()
+
+    with pytest.raises(ValueError, match="amostras para as divisões externas"):
+        repeated_probe_stability(
+            embeddings,
+            index,
+            c_values=[1.0],
+            outer_splits=6,
+            outer_repeats=1,
+            inner_splits=2,
+        )

@@ -7,14 +7,15 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.5.2: catálogo, controle de qualidade, preparação dos dados e
+> Estado atual — v0.6.0: catálogo, controle de qualidade, preparação dos dados e
 > pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
 > do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
 > proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
 > visual documentada. A etapa de modelos extrai representações congeladas,
-> avalia probes lineares, agrupamentos e alinhamento entre protótipos PPL/XPL.
-> A correção de integridade da versão está descrita em
-> [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md).
+> avalia probes lineares, agrupamentos, alinhamento entre protótipos PPL/XPL e
+> estabilidade por validação repetida aninhada. A evolução está descrita em
+> [`docs/UPDATE_V0.6.0.md`](docs/UPDATE_V0.6.0.md); a correção de integridade
+> permanece documentada em [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md).
 
 ## Pergunta de pesquisa
 
@@ -27,7 +28,7 @@ separar categorias petrográficas? Elas permanecem consistentes quando o domíni
 1. Catalogar imagens, classes, modalidades e divisões de treino/validação/teste.
 2. Verificar brilho, contraste e nitidez com OpenCV.
 3. Extrair embeddings com DINOv2 usando PyTorch.
-4. Agrupar embeddings sem rótulos com HDBSCAN.
+4. Agrupar embeddings sem rótulos com K-Means.
 5. Treinar classificadores lineares sobre embeddings congelados.
 6. Comparar PPL e XPL e medir o alinhamento entre protótipos de classe.
 7. Produzir máscaras exploratórias com SAM 2 e indicadores quantitativos.
@@ -153,7 +154,12 @@ avaliação final. São executados seis cenários:
 
 Os resultados também incluem PCA, K-Means avaliado contra classe e modalidade,
 matriz de similaridade entre protótipos e matrizes de confusão. PPL e XPL
-continuam tratados como domínios não pareados. Consulte
+continuam tratados como domínios não pareados.
+
+Além do teste oficial fixo, a v0.6.0 executa validação repetida aninhada somente
+em treino+validação: cinco dobras, cinco repetições e seleção interna de `C`.
+Isso produz 25 medições por cenário para descrever média e variação sem reutilizar
+o teste final. Consulte
 [`docs/DINOV2_COLAB.md`](docs/DINOV2_COLAB.md).
 
 Execução manual no Colab, após preparar os dados:

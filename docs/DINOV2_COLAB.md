@@ -40,12 +40,16 @@ O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
 - `DINOV2_REPORT.md`: resumo automático das métricas;
 - `tables/linear_probe_metrics.csv`: resultados intra e cross-domain;
 - `tables/linear_probe_predictions.csv`: previsões de teste auditáveis;
+- `tables/repeated_probe_fold_metrics.csv`: 25 medições por cenário no
+  conjunto de desenvolvimento;
+- `tables/repeated_probe_summary.csv`: média, desvio-padrão e faixa observada;
 - `tables/clustering_metrics.csv`: ARI, NMI e silhouette;
 - `tables/prototype_similarity.csv`: cosseno entre protótipos PPL/XPL;
 - `tables/pca_coordinates.csv`: projeção reprodutível;
 - `tables/near_duplicate_report.csv`: triagem pHash entre divisões;
 - `figures/pca_class_mode.png`: visualização por classe e modalidade;
 - `figures/prototype_similarity.png`: mapa de alinhamento de protótipos;
+- `figures/repeated_probe_stability.png`: distribuição do macro-F1 repetido;
 - `figures/linear_probe_confusions.png`: matrizes de confusão.
 
 O arquivo de embeddings completo permanece fora do Git porque é um artefato
@@ -62,6 +66,8 @@ e do manifesto do subconjunto.
 - **Seleção de hiperparâmetro:** macro-F1 na validação.
 - **Ajuste final:** treino + validação da modalidade-fonte.
 - **Avaliação:** teste oficial, nunca usado para escolher o classificador.
+- **Estabilidade:** validação repetida aninhada com 5 dobras externas, 5
+  repetições e 3 dobras internas, limitada a treino+validação.
 - **Cenários:** PPL→PPL, PPL→XPL, XPL→XPL, XPL→PPL e combinado→cada domínio.
 - **Não supervisionado:** K-Means com quatro grupos, comparado separadamente com
   rótulos de classe e de modalidade.
@@ -75,6 +81,9 @@ nas representações congeladas; não demonstra generalização para outros
 laboratórios, equipamentos ou populações de rochas. Diferenças entre resultados
 intra e cross-domain indicam sensibilidade ao modo óptico. Os rótulos vêm do
 DeepCarbonate e não foram revalidados por um especialista neste projeto.
+O desvio-padrão das repetições é descritivo: as dobras se sobrepõem e não devem
+ser interpretadas como 25 experimentos independentes nem como intervalo de
+confiança do desempenho em outras bases.
 
 ## Referências técnicas
 

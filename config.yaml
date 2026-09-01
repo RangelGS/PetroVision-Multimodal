@@ -86,3 +86,7 @@ analysis:
     - 10.0
     - 100.0
   kmeans_clusters: 4
+  repeated_validation:
+    outer_splits: 5
+    outer_repeats: 5
+    inner_splits: 3
