@@ -43,6 +43,8 @@ remote_dataset:
   archive_prefix: carbonate_1223
   initial_buffer_mb: 8
   timeout_seconds: 120
+  download_retry_attempts: 5
+  download_retry_backoff_seconds: 2.0
   exclude_name_contains:
     - _ARS
   exclude_archive_members:

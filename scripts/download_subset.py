@@ -169,9 +169,17 @@ def main() -> int:
                 return 0
 
         rows: list[dict[str, object]] = []
+        retry_attempts = int(remote.get("download_retry_attempts", 5))
+        retry_backoff = float(remote.get("download_retry_backoff_seconds", 2.0))
         for image in tqdm(selected, desc="Baixando", unit="imagem"):
             rows.append(
-                download_image(archive, image, project_root=Path(PROJECT_ROOT))
+                download_image(
+                    archive,
+                    image,
+                    project_root=Path(PROJECT_ROOT),
+                    max_attempts=retry_attempts,
+                    retry_backoff_seconds=retry_backoff,
+                )
             )
 
         validate_unique_hashes(rows)

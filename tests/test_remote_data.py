@@ -1,9 +1,12 @@
 from dataclasses import dataclass
+from io import BytesIO
 
 import pytest
+from remotezip import RemoteIOError
 
 from petrovision.remote_data import (
     build_exact_pairs,
+    download_image,
     find_stale_selection_images,
     image_selection_summary,
     local_relative_path,
@@ -22,6 +25,19 @@ class FakeInfo:
     filename: str
     file_size: int = 100
     compress_size: int = 80
+
+
+class FlakyRemoteZip:
+    def __init__(self, payload: bytes, failures: int) -> None:
+        self.payload = payload
+        self.failures = failures
+        self.calls = 0
+
+    def open(self, _member_path: str, _mode: str) -> BytesIO:
+        self.calls += 1
+        if self.calls <= self.failures:
+            raise RemoteIOError("504 Gateway Time-out")
+        return BytesIO(self.payload)
 
 
 CLASSES = {
@@ -286,3 +302,54 @@ def test_quarantine_moves_existing_raw_file(tmp_path) -> None:
     assert len(moves) == 1
     assert not source.exists()
     assert moves[0][1].read_bytes() == b"duplicate-image"
+
+
+def test_download_retries_temporary_remote_error(tmp_path, monkeypatch) -> None:
+    payload = b"x" * 100
+    image = parse_archive_images(
+        [member("PPL", "train", "class10", "Fracture.1")],
+        archive_prefix="carbonate_1223",
+        selected_classes=CLASSES,
+    )[0]
+    remote = FlakyRemoteZip(payload, failures=2)
+    delays: list[float] = []
+    monkeypatch.setattr("petrovision.remote_data.time.sleep", delays.append)
+
+    row = download_image(
+        remote,
+        image,
+        project_root=tmp_path,
+        max_attempts=3,
+        retry_backoff_seconds=2.0,
+    )
+
+    destination = tmp_path / local_relative_path(image)
+    assert remote.calls == 3
+    assert delays == [2.0, 4.0]
+    assert destination.read_bytes() == payload
+    assert row["bytes"] == len(payload)
+    assert not destination.with_suffix(".jpg.part").exists()
+
+
+def test_download_removes_partial_after_retry_exhaustion(tmp_path, monkeypatch) -> None:
+    image = parse_archive_images(
+        [member("PPL", "train", "class10", "Fracture.2")],
+        archive_prefix="carbonate_1223",
+        selected_classes=CLASSES,
+    )[0]
+    remote = FlakyRemoteZip(b"x" * 100, failures=2)
+    monkeypatch.setattr("petrovision.remote_data.time.sleep", lambda _delay: None)
+
+    with pytest.raises(RemoteIOError, match="504 Gateway Time-out"):
+        download_image(
+            remote,
+            image,
+            project_root=tmp_path,
+            max_attempts=2,
+            retry_backoff_seconds=0.0,
+        )
+
+    destination = tmp_path / local_relative_path(image)
+    assert remote.calls == 2
+    assert not destination.exists()
+    assert not destination.with_suffix(".jpg.part").exists()

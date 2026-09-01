@@ -6,9 +6,12 @@ import csv
 import hashlib
 import os
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
+
+from remotezip import RemoteIOError
 
 
 @dataclass(frozen=True)
@@ -480,8 +483,15 @@ def download_image(
     *,
     project_root: Path,
     chunk_size: int = 1024 * 1024,
+    max_attempts: int = 1,
+    retry_backoff_seconds: float = 0.0,
 ) -> dict[str, object]:
-    """Baixa uma entrada com escrita atômica e retorna sua proveniência."""
+    """Baixa uma entrada com escrita atômica e retentativas de rede."""
+
+    if max_attempts < 1:
+        raise ValueError("max_attempts deve ser pelo menos 1.")
+    if retry_backoff_seconds < 0:
+        raise ValueError("retry_backoff_seconds não pode ser negativo.")
 
     relative_path = local_relative_path(image)
     destination = project_root / relative_path
@@ -489,19 +499,34 @@ def download_image(
 
     if not destination.exists() or destination.stat().st_size != image.file_size:
         partial = destination.with_suffix(destination.suffix + ".part")
-        try:
-            with remote_zip.open(image.member_path, "r") as source, partial.open("wb") as out:
-                for chunk in iter(lambda: source.read(chunk_size), b""):
-                    out.write(chunk)
-            if partial.stat().st_size != image.file_size:
-                raise IOError(
-                    f"Tamanho incorreto em {image.filename}: "
-                    f"{partial.stat().st_size} != {image.file_size} bytes."
+        for attempt in range(1, max_attempts + 1):
+            try:
+                with remote_zip.open(image.member_path, "r") as source, partial.open(
+                    "wb"
+                ) as out:
+                    for chunk in iter(lambda: source.read(chunk_size), b""):
+                        out.write(chunk)
+                if partial.stat().st_size != image.file_size:
+                    raise IOError(
+                        f"Tamanho incorreto em {image.filename}: "
+                        f"{partial.stat().st_size} != {image.file_size} bytes."
+                    )
+                os.replace(partial, destination)
+                break
+            except RemoteIOError as exc:
+                if attempt >= max_attempts:
+                    raise
+                delay = min(retry_backoff_seconds * (2 ** (attempt - 1)), 30.0)
+                print(
+                    "\nFalha temporária ao baixar "
+                    f"{image.filename} (tentativa {attempt}/{max_attempts}). "
+                    f"Nova tentativa em {delay:.1f}s: {exc}",
+                    flush=True,
                 )
-            os.replace(partial, destination)
-        finally:
-            if partial.exists():
-                partial.unlink()
+                time.sleep(delay)
+            finally:
+                if partial.exists():
+                    partial.unlink()
 
     return {
         "class_id": image.class_id,

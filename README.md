@@ -7,7 +7,7 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.6.0: catálogo, controle de qualidade, preparação dos dados e
+> Estado atual — v0.6.1: catálogo, controle de qualidade, preparação dos dados e
 > pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
 > do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
 > proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
@@ -15,7 +15,8 @@ auto-supervisionado, integração de dados e reprodutibilidade.
 > avalia probes lineares, agrupamentos, alinhamento entre protótipos PPL/XPL e
 > estabilidade por validação repetida aninhada. A evolução está descrita em
 > [`docs/UPDATE_V0.6.0.md`](docs/UPDATE_V0.6.0.md); a correção de integridade
-> permanece documentada em [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md).
+> permanece documentada em [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md) e a
+> retomada robusta do Zenodo em [`docs/UPDATE_V0.6.1.md`](docs/UPDATE_V0.6.1.md).
 
 ## Pergunta de pesquisa
 
@@ -98,6 +99,10 @@ Se a simulação confirmar 336 imagens, baixar o recorte:
 ```powershell
 python scripts/download_subset.py --yes
 ```
+
+Falhas temporárias `504` do Zenodo recebem até cinco tentativas com espera
+progressiva. Uma nova execução reaproveita imagens completas já transferidas e
+remove automaticamente qualquer arquivo parcial.
 
 O download gera `metadata/subset_manifest.csv` com a origem, o tamanho e o
 SHA-256 de cada imagem. Depois, criar o catálogo:

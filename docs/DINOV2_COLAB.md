@@ -33,6 +33,10 @@ O download seletivo das 336 imagens pode levar aproximadamente 15 a 25 minutos.
 Não feche a aba durante essa célula. O download do checkpoint ocorre apenas na
 primeira execução de uma sessão.
 
+O downloader tenta novamente erros temporários do Zenodo e usa arquivos `.part`
+para impedir que uma transferência interrompida seja tratada como imagem válida.
+Ao repetir a célula, imagens completas já baixadas são reaproveitadas.
+
 ## Artefatos gerados
 
 O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
