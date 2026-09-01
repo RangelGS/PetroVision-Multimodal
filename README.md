@@ -7,7 +7,7 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.5.0: catálogo, controle de qualidade, preparação dos dados e
+> Estado atual — v0.5.1: catálogo, controle de qualidade, preparação dos dados e
 > pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
 > do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
 > proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
