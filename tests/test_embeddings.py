@@ -48,6 +48,25 @@ def test_select_model_inputs_keeps_only_approved_in_stable_order() -> None:
     assert selected["embedding_row"].tolist() == [0, 1]
 
 
+def test_select_model_inputs_rejects_identity_reused_across_splits() -> None:
+    report = pd.DataFrame(
+        [
+            {
+                "sample_id": "Oolitic.20",
+                "mode": "PPL",
+                "split": split,
+                "class_name": "class17_oolite",
+                "path": f"{split}.jpg",
+                "use_for_model": True,
+            }
+            for split in ("train", "val")
+        ]
+    )
+
+    with pytest.raises(ValueError, match="reutilizados entre treino"):
+        select_model_inputs(report)
+
+
 def test_l2_normalize_and_bundle_round_trip(tmp_path: Path) -> None:
     matrix = l2_normalize_embeddings(np.array([[3.0, 4.0], [0.0, 2.0]]))
     index = pd.DataFrame(

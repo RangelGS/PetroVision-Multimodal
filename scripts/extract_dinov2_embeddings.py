@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,8 @@ import pandas as pd
 from PIL import Image
 from tqdm.auto import tqdm
 
-from petrovision.config import load_config, project_path
+from petrovision import __version__
+from petrovision.config import PROJECT_ROOT, load_config, project_path
 from petrovision.embeddings import (
     l2_normalize_embeddings,
     save_embedding_bundle,
@@ -35,6 +37,19 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def git_commit(project_root: Path) -> str:
+    """Obtém o commit da execução sem impedir uso fora de um clone Git."""
+
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else "unavailable"
 
 
 def main() -> int:
@@ -67,6 +82,13 @@ def main() -> int:
     if not quality_path.exists():
         print("Relatório de qualidade não encontrado.")
         print("Execute primeiro: python scripts/run_quality_control.py")
+        return 1
+
+    config_path = project_path(args.config)
+    manifest_path = project_path(config["remote_dataset"]["manifest"])
+    if not manifest_path.exists():
+        print("Manifesto do subconjunto não encontrado.")
+        print("Execute primeiro: python scripts/download_subset.py --yes")
         return 1
 
     index = select_model_inputs(pd.read_csv(quality_path))
@@ -114,6 +136,10 @@ def main() -> int:
     save_embedding_bundle(embeddings, index, embeddings_path, index_path)
     run_metadata = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "petrovision_version": __version__,
+        "git_commit": git_commit(Path(PROJECT_ROOT)),
+        "config_sha256": sha256_file(config_path),
+        "subset_manifest_sha256": sha256_file(manifest_path),
         "model_id": model_id,
         "model_revision": revision,
         "embedding_source": str(model_config["embedding_source"]),

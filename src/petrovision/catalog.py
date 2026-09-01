@@ -19,6 +19,37 @@ CATALOG_COLUMNS = [
 ]
 
 
+def validate_split_disjointness(catalog: pd.DataFrame) -> None:
+    """Garante identidades distintas entre treino, validação e teste."""
+
+    required = {"sample_id", "mode", "split", "class_name"}
+    missing = required.difference(catalog.columns)
+    if missing:
+        raise ValueError(
+            f"Colunas ausentes para auditar as divisões: {sorted(missing)}"
+        )
+    if catalog.empty:
+        return
+
+    identity = ["sample_id", "mode", "class_name"]
+    split_counts = catalog.groupby(identity, dropna=False)["split"].nunique()
+    conflicts = split_counts[split_counts.gt(1)]
+    if conflicts.empty:
+        return
+
+    keys = set(conflicts.index.tolist())
+    rows = catalog[
+        catalog.apply(
+            lambda row: (row["sample_id"], row["mode"], row["class_name"]) in keys,
+            axis=1,
+        )
+    ][["sample_id", "mode", "split", "class_name", "path"]]
+    raise ValueError(
+        "Existem identificadores reutilizados entre treino, validação ou teste:\n"
+        f"{rows.sort_values(identity + ['split']).to_string(index=False)}"
+    )
+
+
 def _normalise_extensions(extensions: Iterable[str]) -> set[str]:
     return {
         extension.lower() if extension.startswith(".") else f".{extension.lower()}"
@@ -77,6 +108,8 @@ def build_catalog(
             f"classe e divisão:\n{duplicated_rows.to_string(index=False)}"
         )
 
+    validate_split_disjointness(catalog)
+
     return catalog.sort_values(
         ["split", "class_name", "sample_id", "mode"]
     ).reset_index(drop=True)
@@ -113,4 +146,3 @@ def modality_pair_table(
         paired[f"path_{first_mode}"].notna() & paired[f"path_{second_mode}"].notna()
     )
     return paired.sort_values(["split", "class_name", "sample_id"]).reset_index(drop=True)
-

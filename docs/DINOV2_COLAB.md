@@ -43,6 +43,7 @@ O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
 - `tables/clustering_metrics.csv`: ARI, NMI e silhouette;
 - `tables/prototype_similarity.csv`: cosseno entre protótipos PPL/XPL;
 - `tables/pca_coordinates.csv`: projeção reprodutível;
+- `tables/near_duplicate_report.csv`: triagem pHash entre divisões;
 - `figures/pca_class_mode.png`: visualização por classe e modalidade;
 - `figures/prototype_similarity.png`: mapa de alinhamento de protótipos;
 - `figures/linear_probe_confusions.png`: matrizes de confusão.
@@ -50,7 +51,9 @@ O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
 O arquivo de embeddings completo permanece fora do Git porque é um artefato
 derivado e reproduzível. A revisão fixa do checkpoint, as versões das
 bibliotecas e os hashes da execução são registrados em
-`results/tables/dinov2_embedding_run.json` durante a sessão.
+`results/tables/dinov2_embedding_run.json` durante a sessão. Esse registro
+também inclui a versão do PetroVision, o commit Git e os hashes do `config.yaml`
+e do manifesto do subconjunto.
 
 ## Protocolo experimental
 

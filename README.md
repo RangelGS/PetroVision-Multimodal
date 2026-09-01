@@ -7,12 +7,14 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.5.1: catálogo, controle de qualidade, preparação dos dados e
+> Estado atual — v0.5.2: catálogo, controle de qualidade, preparação dos dados e
 > pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
 > do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
 > proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
 > visual documentada. A etapa de modelos extrai representações congeladas,
 > avalia probes lineares, agrupamentos e alinhamento entre protótipos PPL/XPL.
+> A correção de integridade da versão está descrita em
+> [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md).
 
 ## Pergunta de pesquisa
 
@@ -107,6 +109,13 @@ O manifesto também é auditado contra conteúdos repetidos. Duas entradas
 idênticas com rótulos conflitantes foram documentadas, colocadas em quarentena
 e substituídas. Consulte `metadata/DATASET_ISSUES.md`.
 
+A v0.5.2 também impede que o mesmo `sample_id` seja reutilizado entre treino,
+validação e teste dentro da mesma classe e modalidade. Uma triagem por pHash
+gera `results/dinov2/tables/near_duplicate_report.csv` para revisão de possíveis
+duplicatas visuais; os candidatos não são excluídos automaticamente.
+As decisões visuais ficam registradas em
+`metadata/near_duplicate_review.csv`.
+
 Executar o controle de qualidade:
 
 ```powershell
@@ -171,6 +180,11 @@ modalidade são selecionadas 30 imagens de treino, 7 de validação e 5 de teste
 Isso totaliza 336 imagens: 168 PPL e 168 XPL. A validação é limitada pelas 7
 imagens XPL de Oolite disponíveis; aplicar o mesmo limite a todos os grupos
 mantém o recorte equilibrado. Arquivos `_ARS` são excluídos.
+
+A seleção reserva primeiro os identificadores de treino, depois os de validação
+e por fim os de teste. Assim, cada combinação de modalidade, classe e
+`sample_id` aparece em apenas uma divisão. O catálogo e a extração de embeddings
+repetem essa validação como defesa adicional.
 
 O artigo informa que PPL e XPL foram capturadas simultaneamente, mas o ZIP não
 publica uma chave de pareamento individual. O projeto não associa imagens por

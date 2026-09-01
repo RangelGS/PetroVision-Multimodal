@@ -7,6 +7,8 @@ paths:
   catalog: data/processed/catalog.csv
   quality_report: results/tables/quality_report.csv
   quality_summary: results/tables/quality_summary.csv
+  near_duplicate_report: results/dinov2/tables/near_duplicate_report.csv
+  manual_near_duplicate_review: metadata/near_duplicate_review.csv
   manual_quality_review: metadata/quality_manual_review.csv
   dinov2_embeddings: data/processed/dinov2_small_embeddings.npz
   dinov2_index: results/tables/dinov2_embedding_index.csv
@@ -46,7 +48,9 @@ remote_dataset:
   exclude_archive_members:
     - carbonate_1223/PPL-1223/train/class10/Fracture.999.jpg
     - carbonate_1223/XPL-1223/train/class13/Micritic_limestone.1837.jpg
+    - carbonate_1223/XPL-1223/train/class17/Oolitic.135.jpg
   quarantine_root: data/interim/quarantine/dataset_duplicates
+  superseded_quarantine_root: data/interim/quarantine/superseded_selection
   selected_classes:
     class10:
       label: Cemented fracture

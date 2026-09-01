@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
 
 from remotezip import RemoteZip
@@ -12,10 +13,12 @@ from petrovision.config import PROJECT_ROOT, load_config, project_path
 from petrovision.remote_data import (
     build_exact_pairs,
     download_image,
+    find_stale_selection_images,
     image_selection_summary,
     parse_archive_images,
     quarantine_existing_images,
     select_images,
+    validate_disjoint_split_identities,
     validate_unique_hashes,
     write_manifest,
 )
@@ -109,6 +112,20 @@ def main() -> int:
             seed=int(config["project"]["random_seed"]),
         )
         counts, image_count, total_bytes = image_selection_summary(selected)
+        manifest_path = project_path(remote["manifest"])
+        previous_members: set[str] = set()
+        if manifest_path.exists():
+            with manifest_path.open(encoding="utf-8", newline="") as stream:
+                previous_members = {
+                    str(row.get("archive_member", ""))
+                    for row in csv.DictReader(stream)
+                    if row.get("archive_member")
+                }
+        stale_images = find_stale_selection_images(
+            previous_members,
+            selected,
+            all_images,
+        )
 
         print("\nSeleção determinística confirmada:")
         print("classe  rótulo oficial                 modo  treino  validação  teste  total")
@@ -136,6 +153,10 @@ def main() -> int:
             "Estratégia: modalidades não pareadas, estratificadas de forma "
             "independente."
         )
+        print(
+            "Imagens de uma seleção anterior a mover para quarentena: "
+            f"{len(stale_images)}"
+        )
 
         if args.dry_run:
             print("\nSimulação concluída. Nenhuma imagem foi baixada.")
@@ -154,13 +175,18 @@ def main() -> int:
             )
 
         validate_unique_hashes(rows)
+        validate_disjoint_split_identities(rows)
         quarantine_root = project_path(remote["quarantine_root"])
         moves = quarantine_existing_images(
             excluded_images,
             project_root=Path(PROJECT_ROOT),
             quarantine_root=quarantine_root,
         )
-        manifest_path = project_path(remote["manifest"])
+        stale_moves = quarantine_existing_images(
+            stale_images,
+            project_root=Path(PROJECT_ROOT),
+            quarantine_root=project_path(remote["superseded_quarantine_root"]),
+        )
         write_manifest(
             rows,
             path=manifest_path,
@@ -168,6 +194,7 @@ def main() -> int:
         )
         print(f"\nDownload concluído. Manifesto: {manifest_path}")
         print(f"Arquivos movidos para quarentena: {len(moves)}")
+        print(f"Arquivos substituídos movidos para quarentena: {len(stale_moves)}")
         print("Os dados brutos continuam ignorados pelo Git.")
         return 0
     finally:

@@ -4,6 +4,7 @@ import pytest
 
 from petrovision.remote_data import (
     build_exact_pairs,
+    find_stale_selection_images,
     image_selection_summary,
     local_relative_path,
     parse_archive_images,
@@ -11,6 +12,7 @@ from petrovision.remote_data import (
     select_images,
     select_pairs,
     selection_summary,
+    validate_disjoint_split_identities,
     validate_unique_hashes,
 )
 
@@ -167,6 +169,38 @@ def test_deterministic_unpaired_selection_by_mode() -> None:
     assert total_bytes == 1600
     assert counts[("PPL", "class10", "train")] == 2
     assert counts[("XPL", "class13", "test")] == 1
+    identities = [(item.mode, item.class_id, item.sample_id) for item in first]
+    assert len(identities) == len(set(identities))
+
+
+def test_unpaired_selection_reserves_train_ids_before_validation() -> None:
+    infos = [
+        member("PPL", "train", "class10", "sample.0"),
+        member("PPL", "train", "class10", "sample.1"),
+        member("PPL", "val", "class10", "sample.0"),
+        member("PPL", "val", "class10", "sample.1"),
+        member("PPL", "val", "class10", "sample.2"),
+        member("PPL", "val", "class10", "sample.3"),
+    ]
+    images = parse_archive_images(
+        infos,
+        archive_prefix="carbonate_1223",
+        selected_classes=CLASSES,
+    )
+
+    selected = select_images(
+        images,
+        selected_classes={"class10": CLASSES["class10"]},
+        images_per_split_per_mode={"train": 2, "val": 2},
+        modes=["PPL"],
+        seed=42,
+    )
+
+    train_ids = {item.sample_id for item in selected if item.split == "train"}
+    val_ids = {item.sample_id for item in selected if item.split == "val"}
+    assert train_ids == {"sample.0", "sample.1"}
+    assert val_ids == {"sample.2", "sample.3"}
+    assert train_ids.isdisjoint(val_ids)
 
 
 def test_unpaired_selection_reports_shortage() -> None:
@@ -179,6 +213,26 @@ def test_unpaired_selection_reports_shortage() -> None:
         )
 
 
+def test_finds_images_removed_from_previous_selection() -> None:
+    images = parse_archive_images(
+        [
+            member("PPL", "val", "class10", "old"),
+            member("PPL", "val", "class10", "new"),
+        ],
+        archive_prefix="carbonate_1223",
+        selected_classes=CLASSES,
+    )
+    selected = [image for image in images if image.sample_id == "new"]
+
+    stale = find_stale_selection_images(
+        [image.member_path for image in images],
+        selected,
+        images,
+    )
+
+    assert [image.sample_id for image in stale] == ["old"]
+
+
 def test_manifest_rejects_duplicate_content() -> None:
     digest = "a" * 64
     rows = [
@@ -188,6 +242,28 @@ def test_manifest_rejects_duplicate_content() -> None:
 
     with pytest.raises(ValueError, match="Conteúdo duplicado"):
         validate_unique_hashes(rows)
+
+
+def test_manifest_rejects_identity_reused_across_splits() -> None:
+    rows = [
+        {
+            "mode": "PPL",
+            "class_id": "class17",
+            "sample_id": "Oolitic.20",
+            "split": "train",
+            "archive_member": "train/Oolitic.20.jpg",
+        },
+        {
+            "mode": "PPL",
+            "class_id": "class17",
+            "sample_id": "Oolitic.20",
+            "split": "val",
+            "archive_member": "val/Oolitic.20.jpg",
+        },
+    ]
+
+    with pytest.raises(ValueError, match="Identificador reutilizado"):
+        validate_disjoint_split_identities(rows)
 
 
 def test_quarantine_moves_existing_raw_file(tmp_path) -> None:

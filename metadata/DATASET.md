@@ -30,6 +30,11 @@ possui somente 7 imagens de validação; aplicar o mesmo limite aos demais grupo
 evita desbalanceamento e não move amostras entre divisões. A seleção preserva
 as divisões oficiais, usa semente 42 e exclui `_ARS`.
 
+Os identificadores são reservados na ordem treino, validação e teste. Dentro da
+mesma modalidade e classe, um `sample_id` não pode aparecer em mais de uma
+divisão. O manifesto também é validado por SHA-256 e passa por triagem de
+possíveis duplicatas visuais usando pHash.
+
 ## Modalidades não pareadas
 
 O artigo relata aquisição simultânea em PPL e XPL, mas o ZIP reorganizado em

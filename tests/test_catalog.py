@@ -2,6 +2,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from petrovision.catalog import build_catalog, modality_pair_table
 
@@ -29,3 +30,15 @@ def test_catalog_and_pairing(tmp_path: Path) -> None:
     assert int(pairs["has_pair"].sum()) == 1
     assert set(catalog["class_name"]) == {"oolite"}
 
+
+def test_catalog_rejects_identity_reused_across_splits(tmp_path: Path) -> None:
+    _write_image(tmp_path / "PPL" / "train" / "oolite" / "Oolitic.20.jpg")
+    _write_image(tmp_path / "PPL" / "val" / "oolite" / "Oolitic.20.jpg", 130)
+
+    with pytest.raises(ValueError, match="reutilizados entre treino"):
+        build_catalog(
+            tmp_path,
+            modes=["PPL"],
+            splits=["train", "val", "test"],
+            extensions=[".jpg"],
+        )

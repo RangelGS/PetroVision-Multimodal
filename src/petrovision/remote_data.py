@@ -242,19 +242,25 @@ def select_images(
     for image in images:
         grouped.setdefault((image.mode, image.split, image.class_id), []).append(image)
 
+    split_priority = ("train", "val", "test")
+    ordered_splits = [
+        split for split in split_priority if split in images_per_split_per_mode
+    ]
+    ordered_splits.extend(
+        split
+        for split in images_per_split_per_mode
+        if split not in split_priority
+    )
+
     selected: list[ArchiveImage] = []
     shortages: list[str] = []
     for class_id in selected_classes:
         for mode in modes:
             normalised_mode = mode.upper()
-            for split, requested in images_per_split_per_mode.items():
+            reserved_ids: set[str] = set()
+            for split in ordered_splits:
+                requested = images_per_split_per_mode[split]
                 candidates = grouped.get((normalised_mode, split, class_id), [])
-                if len(candidates) < requested:
-                    shortages.append(
-                        f"{normalised_mode}/{class_id}/{split}: "
-                        f"{len(candidates)} disponíveis, {requested} solicitadas"
-                    )
-                    continue
 
                 def rank(image: ArchiveImage) -> str:
                     payload = (
@@ -263,7 +269,28 @@ def select_images(
                     ).encode()
                     return hashlib.sha256(payload).hexdigest()
 
-                selected.extend(sorted(candidates, key=rank)[:requested])
+                available: list[ArchiveImage] = []
+                seen_in_split: set[str] = set()
+                for image in sorted(candidates, key=rank):
+                    identity = image.sample_id.casefold()
+                    if identity in reserved_ids or identity in seen_in_split:
+                        continue
+                    seen_in_split.add(identity)
+                    available.append(image)
+
+                if len(available) < requested:
+                    shortages.append(
+                        f"{normalised_mode}/{class_id}/{split}: "
+                        f"{len(available)} identificadores únicos disponíveis após "
+                        f"reservar divisões anteriores, {requested} solicitadas"
+                    )
+                    continue
+
+                chosen = available[:requested]
+                selected.extend(chosen)
+                reserved_ids.update(
+                    image.sample_id.casefold() for image in chosen
+                )
 
     if shortages:
         raise ValueError(
@@ -296,6 +323,28 @@ def image_selection_summary(
         image_count += 1
         total_bytes += image.file_size
     return counts, image_count, total_bytes
+
+
+def find_stale_selection_images(
+    previous_archive_members: Iterable[str],
+    selected: Iterable[ArchiveImage],
+    available_images: Iterable[ArchiveImage],
+) -> list[ArchiveImage]:
+    """Localiza imagens de um manifesto anterior que saíram da seleção atual."""
+
+    selected_members = {image.member_path for image in selected}
+    stale_members = set(previous_archive_members).difference(selected_members)
+    available_by_member = {image.member_path: image for image in available_images}
+    unknown = stale_members.difference(available_by_member)
+    if unknown:
+        raise ValueError(
+            "O manifesto anterior contém entradas ausentes no índice remoto:\n- "
+            + "\n- ".join(sorted(unknown))
+        )
+    return sorted(
+        (available_by_member[member] for member in stale_members),
+        key=lambda image: image.member_path,
+    )
 
 
 def class_slug(class_id: str, class_label: str) -> str:
@@ -349,6 +398,48 @@ def validate_unique_hashes(rows: Iterable[Mapping[str, object]]) -> list[Mapping
         raise ValueError(
             "Conteúdo duplicado detectado no subconjunto final:\n- "
             + "\n- ".join(details)
+        )
+    return materialized
+
+
+def validate_disjoint_split_identities(
+    rows: Iterable[Mapping[str, object]],
+) -> list[Mapping[str, object]]:
+    """Impede que um identificador seja reutilizado entre divisões.
+
+    A identidade é definida dentro da mesma modalidade e classe. O mesmo nome
+    em PPL e XPL continua permitido porque o ZIP não fornece pareamento seguro
+    entre essas modalidades.
+    """
+
+    materialized = list(rows)
+    grouped: dict[tuple[str, str, str], list[Mapping[str, object]]] = {}
+    for row in materialized:
+        mode = str(row.get("mode", "")).strip().upper()
+        class_id = str(row.get("class_id", "")).strip().casefold()
+        sample_id = str(row.get("sample_id", "")).strip().casefold()
+        split = str(row.get("split", "")).strip().casefold()
+        if not all((mode, class_id, sample_id, split)):
+            raise ValueError(
+                "Não foi possível auditar identidades: mode, class_id, "
+                "sample_id e split são obrigatórios."
+            )
+        grouped.setdefault((mode, class_id, sample_id), []).append(row)
+
+    conflicts: list[str] = []
+    for (mode, class_id, sample_id), group in grouped.items():
+        splits = {str(row["split"]).strip().casefold() for row in group}
+        if len(splits) <= 1:
+            continue
+        members = ", ".join(
+            f"{row['split']}:{row.get('archive_member', '?')}" for row in group
+        )
+        conflicts.append(f"{mode}/{class_id}/{sample_id}: {members}")
+
+    if conflicts:
+        raise ValueError(
+            "Identificador reutilizado entre treino, validação ou teste:\n- "
+            + "\n- ".join(conflicts)
         )
     return materialized
 
@@ -434,6 +525,7 @@ def write_manifest(
     """Grava o manifesto auditável em CSV."""
 
     validated_rows = validate_unique_hashes(rows)
+    validate_disjoint_split_identities(validated_rows)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
     try:

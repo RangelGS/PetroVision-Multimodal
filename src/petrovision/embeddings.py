@@ -9,6 +9,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from petrovision.catalog import validate_split_disjointness
+
 
 EMBEDDING_KEY = "embeddings"
 IDENTITY_COLUMNS = ["sample_id", "mode", "split", "class_name", "path"]
@@ -48,6 +50,8 @@ def select_model_inputs(quality_report: pd.DataFrame) -> pd.DataFrame:
             "Há identidades repetidas entre as imagens aprovadas:\n"
             f"{rows.to_string(index=False)}"
         )
+
+    validate_split_disjointness(selected)
 
     split_order = pd.CategoricalDtype(["train", "val", "test"], ordered=True)
     selected["split"] = selected["split"].astype(split_order)

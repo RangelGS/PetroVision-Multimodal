@@ -1,0 +1,12 @@
+mode,class_id,split_a,sample_id_a,split_b,sample_id_b,phash_hamming_distance,manual_decision,review_notes
+PPL,class10,test,Fracture.107,train,Fracture.597,4,distinct_keep,"Geometria da fratura e textura da matriz distintas; sem correspondência espacial."
+PPL,class10,train,Fracture.1002,val,Fracture.149,4,distinct_keep,"Campos petrográficos distintos; sem correspondência de estruturas."
+PPL,class10,train,Fracture.597,val,Fracture.149,4,distinct_keep,"Fraturas com trajetórias e matrizes distintas."
+PPL,class10,train,Fracture.622,val,Fracture.149,4,distinct_keep,"Campo verde granular e campo marrom fraturado são distintos."
+PPL,class10,train,Fracture.796,val,Fracture.149,4,distinct_keep,"Estruturas e orientação das feições são distintas."
+PPL,class17,train,Oolitic.63,val,Oolitic.1,4,distinct_keep,"Painéis microscópicos diferentes; pHash dominado pelo grande fundo cinza e pela barra de escala."
+XPL,class10,train,Fracture.648,val,Fracture.21,4,distinct_keep,"Textura, iluminação e geometria das fraturas são distintas."
+XPL,class10,train,Fracture.753,val,Fracture.21,4,distinct_keep,"Trajetória da fratura e feições minerais não correspondem."
+XPL,class10,train,Fracture.753,val,Fracture.87,4,distinct_keep,"Campos distintos; sem alinhamento espacial das feições."
+XPL,class13,train,Micritic_limestone.44,val,Micritic_limestone.155,4,distinct_keep,"Geometria das feições lineares e aparência da matriz são distintas."
+XPL,class17,test,10,train,Oolitic.135,4,exclude_train_near_duplicate,"Mesmo campo petrográfico e mesmas feições minerais; arquivos diferem apenas em brilho/processamento. Preservar teste e excluir treino."
