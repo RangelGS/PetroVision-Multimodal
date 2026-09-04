@@ -37,6 +37,56 @@ O downloader tenta novamente erros temporários do Zenodo e usa arquivos `.part`
 para impedir que uma transferência interrompida seja tratada como imagem válida.
 Ao repetir a célula, imagens completas já baixadas são reaproveitadas.
 
+### Recuperação quando a sessão do Colab expirar
+
+O armazenamento de `/content` é temporário. Se a sessão desaparecer durante o
+download, mas as 336 imagens já existirem no computador local, compacte somente
+`data/raw` no PowerShell:
+
+```powershell
+Compress-Archive -LiteralPath "data\raw" -DestinationPath "$env:USERPROFILE\Downloads\PetroVision_DeepCarbonate_336_clean.zip"
+```
+
+No Colab, execute as células de instalação e testes, envie esse ZIP com
+`files.upload()` e extraia preservando a estrutura relativa. A normalização de
+`\\` é necessária para ZIPs criados no Windows:
+
+```python
+from google.colab import files
+from pathlib import Path
+from zipfile import ZipFile
+import shutil
+
+enviados = files.upload()
+arquivo_zip = Path(next(iter(enviados)))
+
+with ZipFile(arquivo_zip) as arquivo:
+    for membro in arquivo.infolist():
+        nome = membro.filename.replace("\\", "/")
+        partes = Path(nome).parts
+        if not partes or partes[0] != "raw" or ".." in partes:
+            raise ValueError(f"Caminho inesperado no ZIP: {nome}")
+        destino = Path("data").joinpath(*partes)
+        if membro.is_dir():
+            destino.mkdir(parents=True, exist_ok=True)
+        else:
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            with arquivo.open(membro) as origem, destino.open("wb") as saida:
+                shutil.copyfileobj(origem, saida)
+
+imagens = [
+    caminho
+    for caminho in Path("data/raw").rglob("*")
+    if caminho.suffix.lower() in {".jpg", ".jpeg"}
+]
+print("Imagens extraídas:", len(imagens))
+assert len(imagens) == 336
+```
+
+Com a mensagem `Imagens extraídas: 336`, pule a etapa de reconstrução remota e
+continue no controle de qualidade. O ZIP contém dados brutos, não deve ser
+adicionado ao Git e continua sujeito à licença declarada pelo DeepCarbonate.
+
 ## Artefatos gerados
 
 O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
@@ -59,7 +109,7 @@ O notebook baixa `PetroVision_DINOv2_results.zip`, contendo:
 O arquivo de embeddings completo permanece fora do Git porque é um artefato
 derivado e reproduzível. A revisão fixa do checkpoint, as versões das
 bibliotecas e os hashes da execução são registrados em
-`results/tables/dinov2_embedding_run.json` durante a sessão. Esse registro
+`results/dinov2/tables/dinov2_embedding_run.json` durante a sessão. Esse registro
 também inclui a versão do PetroVision, o commit Git e os hashes do `config.yaml`
 e do manifesto do subconjunto.
 

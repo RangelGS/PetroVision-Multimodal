@@ -1,0 +1,2 @@
+samples,embedding_dimensions,pca_explained_variance_2d,same_class_mean_cosine,different_class_mean_cosine,prototype_alignment_gap
+336,384,0.17104673385620117,0.9529718160629272,0.8736624817053477,0.07930933435757959

@@ -1,0 +1,17 @@
+source_mode,source_class,target_mode,target_class,cosine_similarity,same_class
+PPL,class10_cemented_fracture,XPL,class10_cemented_fracture,0.9447165727615356,True
+PPL,class10_cemented_fracture,XPL,class13_micritic_limestone,0.9271303415298462,False
+PPL,class10_cemented_fracture,XPL,class17_oolite,0.7827924489974976,False
+PPL,class10_cemented_fracture,XPL,class22_pore,0.8262568712234497,False
+PPL,class13_micritic_limestone,XPL,class10_cemented_fracture,0.9441584348678589,False
+PPL,class13_micritic_limestone,XPL,class13_micritic_limestone,0.954174280166626,True
+PPL,class13_micritic_limestone,XPL,class17_oolite,0.875683069229126,False
+PPL,class13_micritic_limestone,XPL,class22_pore,0.9000633955001831,False
+PPL,class17_oolite,XPL,class10_cemented_fracture,0.8072736263275146,False
+PPL,class17_oolite,XPL,class13_micritic_limestone,0.851649284362793,False
+PPL,class17_oolite,XPL,class17_oolite,0.9747439622879028,True
+PPL,class17_oolite,XPL,class22_pore,0.8187726736068726,False
+PPL,class22_pore,XPL,class10_cemented_fracture,0.9376740455627441,False
+PPL,class22_pore,XPL,class13_micritic_limestone,0.9409607648849487,False
+PPL,class22_pore,XPL,class17_oolite,0.8715348243713379,False
+PPL,class22_pore,XPL,class22_pore,0.9382524490356445,True

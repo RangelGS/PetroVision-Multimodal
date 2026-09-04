@@ -20,6 +20,12 @@ results/dinov2/*
 !results/figures/.gitkeep
 !results/tables/.gitkeep
 !results/dinov2/.gitkeep
+!results/dinov2/DINOV2_REPORT.md
+!results/dinov2/figures/
+!results/dinov2/figures/*.png
+!results/dinov2/tables/
+!results/dinov2/tables/*.csv
+!results/dinov2/tables/*.json
 
 *.pt
 *.pth

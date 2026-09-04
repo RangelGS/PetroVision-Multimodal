@@ -7,16 +7,20 @@ petrográficas multimodais. O projeto foi planejado para demonstrar competência
 em Python científico, visão computacional, modelos fundacionais, aprendizado
 auto-supervisionado, integração de dados e reprodutibilidade.
 
-> Estado atual — v0.6.1: catálogo, controle de qualidade, preparação dos dados e
-> pipeline DINOv2 estão implementados. O projeto seleciona 336 imagens PPL/XPL
+> Estado atual — v1.0.0: catálogo, controle de qualidade, preparação dos dados e
+> pipeline DINOv2 foram implementados e executados. O projeto seleciona 336 imagens PPL/XPL
 > do DeepCarbonate, equilibradas por modalidade, classe e divisão, com
 > proveniência e hashes. As 336 foram aceitas após triagem automática e revisão
 > visual documentada. A etapa de modelos extrai representações congeladas,
 > avalia probes lineares, agrupamentos, alinhamento entre protótipos PPL/XPL e
-> estabilidade por validação repetida aninhada. A evolução está descrita em
+> estabilidade por validação repetida aninhada. Os resultados reproduzíveis da
+> execução final estão versionados em [`results/dinov2`](results/dinov2). A
+> evolução está descrita em
 > [`docs/UPDATE_V0.6.0.md`](docs/UPDATE_V0.6.0.md); a correção de integridade
 > permanece documentada em [`docs/UPDATE_V0.5.2.md`](docs/UPDATE_V0.5.2.md) e a
 > retomada robusta do Zenodo em [`docs/UPDATE_V0.6.1.md`](docs/UPDATE_V0.6.1.md).
+> O fechamento da prova de conceito está em
+> [`docs/UPDATE_V1.0.0.md`](docs/UPDATE_V1.0.0.md).
 
 ## Pergunta de pesquisa
 
@@ -32,8 +36,10 @@ separar categorias petrográficas? Elas permanecem consistentes quando o domíni
 4. Agrupar embeddings sem rótulos com K-Means.
 5. Treinar classificadores lineares sobre embeddings congelados.
 6. Comparar PPL e XPL e medir o alinhamento entre protótipos de classe.
-7. Produzir máscaras exploratórias com SAM 2 e indicadores quantitativos.
-8. Documentar métricas, limitações e reprodutibilidade.
+7. Documentar métricas, estabilidade, limitações e reprodutibilidade.
+
+Segmentação com SAM 2 permanece como continuação futura e não integra o escopo
+validado da v1.0.0.
 
 ## Estrutura esperada dos dados
 
@@ -167,6 +173,29 @@ Isso produz 25 medições por cenário para descrever média e variação sem re
 o teste final. Consulte
 [`docs/DINOV2_COLAB.md`](docs/DINOV2_COLAB.md).
 
+## Resultados da execução de referência
+
+A execução de referência da v0.6.1 foi realizada em 3 de setembro de 2026, no
+commit `83ac0b3`, com uma Tesla T4. A v1.0.0 preserva o pipeline validado e
+publica seus artefatos leves. O teste oficial contém apenas 20 imagens por
+modalidade e deve ser interpretado em conjunto com a análise repetida no
+conjunto de desenvolvimento.
+
+| Treino | Avaliação | Macro-F1 no teste | Macro-F1 repetido (média ± DP) |
+|---|---|---:|---:|
+| PPL | PPL | 0,488 | 0,673 ± 0,063 |
+| PPL | XPL | 0,581 | 0,587 ± 0,104 |
+| PPL+XPL | PPL | **0,635** | 0,675 ± 0,073 |
+| PPL+XPL | XPL | 0,557 | 0,650 ± 0,088 |
+| XPL | PPL | 0,534 | 0,509 ± 0,078 |
+| XPL | XPL | 0,473 | **0,691 ± 0,091** |
+
+O treinamento combinado apresentou o comportamento mais equilibrado entre os
+dois domínios na validação repetida. Os agrupamentos não supervisionados foram
+fracos (`ARI` de classe 0,129; `silhouette` 0,059), portanto o projeto não
+afirma que as classes formem grupos naturais bem separados. Consulte o
+[`relatório técnico`](docs/RELATORIO_TECNICO.md) para a interpretação completa.
+
 Execução manual no Colab, após preparar os dados:
 
 ```bash
@@ -177,8 +206,8 @@ python scripts/analyze_dinov2_embeddings.py
 ## Hardware
 
 O catálogo e o controle de qualidade rodam localmente. Como a GPU AMD RX 7600
-não oferece o fluxo CUDA esperado pelo SAM 2 no Windows, as etapas pesadas serão
-preparadas para Google Colab com GPU. O VSCode continuará sendo usado para
+não oferece o fluxo CUDA usado neste experimento, a extração DINOv2 foi
+preparada para Google Colab com GPU. O VSCode continua sendo usado para
 organização, Git, documentação e desenvolvimento.
 
 ## Dados e integridade científica
@@ -211,9 +240,17 @@ brutas ficam fora do Git; este repositório versiona o código, o plano de
 seleção, o manifesto de proveniência e os resultados. Consulte
 `metadata/DATASET.md`.
 
-Resultados futuros de segmentação do SAM 2 serão descritos como regiões candidatas, não
-como identificação mineral validada. Interpretação geológica exige validação de
-especialistas.
+Uma continuação futura com SAM 2 deverá descrever as máscaras como regiões
+candidatas, não como identificação mineral validada. Interpretação geológica
+exige validação de especialistas.
+
+## Entregáveis da v1.0.0
+
+- [`Relatório técnico em Markdown`](docs/RELATORIO_TECNICO.md) e
+  [`versão em PDF`](output/pdf/PetroVision_Relatorio_Tecnico_v1.0.pdf)
+- [`Orientação para o Currículo Lattes`](docs/LATTES.md)
+- [`Roteiro de demonstração de 2 a 3 minutos`](docs/ROTEIRO_DEMONSTRACAO.md)
+- [`Relatório automático e resultados`](results/dinov2/DINOV2_REPORT.md)
 
 ## Autoria
 

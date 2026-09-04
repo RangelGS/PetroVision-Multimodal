@@ -1,0 +1,19 @@
+{
+  "batch_size": 16,
+  "config_sha256": "d63cfa8fbd6f6d63fdf9a3103f81d1f266d996bf675529cf0fa741d8daf93ccc",
+  "created_utc": "2026-09-03T22:03:24.450256+00:00",
+  "device": "cuda",
+  "embedding_dimensions": 384,
+  "embedding_source": "cls_token",
+  "embeddings_npz_sha256": "8f605847c5d67ca01abe75b4ec259db67a91404d1bbdc9a4ce34643e7b49664a",
+  "git_commit": "83ac0b325f81c2f4722593c6df42f196353840de",
+  "l2_normalized": true,
+  "model_id": "facebook/dinov2-small",
+  "model_revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+  "petrovision_version": "0.6.1",
+  "quality_report_sha256": "613216b41b50312555366324b472554dae6a36df11134e598886277801520d59",
+  "samples": 336,
+  "subset_manifest_sha256": "ec116346a36be232aa004eb0ebc4f5f164b894305d7e64e3956e327dfebf855f",
+  "torch_version": "2.11.0+cu128",
+  "transformers_version": "5.16.1"
+}
